@@ -1,13 +1,42 @@
 # Google-CTF-OCR-Writeup
 > Jason1024 @ Balsn
 
-The computation of prediction can be represented with below formula. The first parenthesis represents the computation of the dense layer of 4 nodes and the latter part represents that of the softmax layer with 128 outputs before applying the activation function.
+<!--  
+\left(
+\begin{bmatrix}
+r_0 & g_0 & b_0 & r_1 & g_1 & b_1 & \cdots\\
+\end{bmatrix}_{1\times768}
+\begin{bmatrix}
+1 & 0 & 0& 0\\
+0 & 0 & 0& 0\\
+\vdots & \vdots & \vdots & \vdots \\
+0 & 0 & 0& 0\\
+\end{bmatrix}_{768\times 4} +
+\begin{bmatrix}
+b & 0 & 0& 0\\
+\end{bmatrix}_{1\times 4}
+\right)
+\begin{bmatrix}
+1 & 0 & \cdots& 0\\
+0 & 0 & \cdots& 0\\
+0 & 0 & \cdots& 0\\
+0 & 0 & \cdots& 0\\
+\end{bmatrix}_{4\times 128}+
+\begin{bmatrix}
+0 & \cdots & 0\\
+\end{bmatrix}_{1\times 128}=
+\begin{bmatrix}
+(r_0 + b) & 0 & \cdots & 0\\
+\end{bmatrix}_{1\times 128}
+-->
+
+We can represent the computation of prediction with the below formula. The first parenthesis represents the computation of the dense layer of 4 nodes, and the latter part represents that of the softmax layer with 128 outputs before applying the activation function.
 
 ![](https://i.imgur.com/Rrcyqqe.jpg)
 
-By choosing the weights (of the 768x4 and 4x128 matrix) and biases (of the 1x4 matrix) wisely, we can leak the information of each channel of pixel by pixel, just like the above example which outputs $(r_0 + b)$, where $r_0$ is wanted value from the image and $b$ is some bias that we have control of.
+By choosing the weights (of the 768x4 and 4x128 matrix) and biases (of the 1x4 matrix) wisely, we can leak the information of each channel pixel by pixel, just like the above example, which outputs $(r_0 + b)$, where $r_0$ is wanted value from the image and $b$ is some bias that we have control.
 
-Continue taking the above example, after applying the softmax function, the value of index 0 will be : 
+Continue taking the above example; after applying the softmax function, the value of index 0 will be : 
 $$\frac{e^{(r_0+b)}}{e^{(r_0+b)} + 127}$$
 
 The problem provides an oracle that outputs if exists some i such that predict[i] > 0.5 or not, that is to say, we have an oracle to check if:
@@ -15,11 +44,11 @@ $$ \frac{e^{(r_0+b)}}{e^{(r_0+b)} + 127} > 0.5 \Rightarrow b > \ln{127} - r_0$$
 
 Since we already know that $\forall i, 0 \le r_i, g_i, b_i \le 1$, we only need to search the smallest value of b within $[\ln{127} - 1, \ln{127}]$ that make the oracle output index 0 (`\x00`).
 
-This can be done by splitting the range into certain portions (eg. 8) and find the first successful $b$ and use it as a kind of representation of the pixel value. (Noted that we're testing the same pixel for multiple pictures simultaneously, so binary searching $b$ may not be useful).
+We can search the value by splitting the range into certain portions (e.g., 8), finding the first successful $b$, and using it as a pixel value representation. (Noted that we're testing the same pixel for multiple pictures simultaneously, so binary searching $b$ may not be helpful).
 
-After leaking the original image values, we can use python package pillow to generate images. Below is the writeup and the resulting image:
+After leaking the original image values, we can use the python package pillow to generate images. Below is the writeup and the resulting image:
 
-```python3=
+```python=
 from pwn import *
 from math import log
 from PIL import Image, ImageDraw
@@ -113,3 +142,5 @@ exit(0)
 
 
 Flag: `CTF{n0_l3aky_ReLU_y3t_5till_le4ky}`
+
+The code is also available at [my Github repo](https://github.com/jason-plainlog/Google-CTF-OCR-Writeup/tree/main)
